@@ -12,24 +12,29 @@ In the Python file, you should put the IP of your Tasmota device that hosts the 
 
 ### Installation
 
-1. Copy the files to the /data folder on your venus:
+Be sure that you have some kbyte left on your /data partition (directory). See `df -h`. If not, do/try ???
+
+1. `root@raspberrypi4:~# cd /data`
+2. 
+
+3. Copy the files to the /data folder on your venus:
 
    - /data/dbus-tasmota-smartmeter/dbus-tasmota-smartmeter.py
    - /data/dbus-tasmota-smartmeter/kill_me.sh
    - /data/dbus-tasmota-smartmeter/service/run
 
-2. Set permissions for files:
+4. Set permissions for files:
 
    `chmod 755 /data/dbus-tasmota-smartmeter/service/run`
 
    `chmod 744 /data/dbus-tasmota-smartmeter/kill_me.sh`
 
-3. Get two files from the [velib_python](https://github.com/victronenergy/velib_python) and install them on your venus:
+5. Get two files from the [velib_python](https://github.com/victronenergy/velib_python) and install them on your venus:
 
    - /data/dbus-tasmota-smartmeter/vedbus.py
    - /data/dbus-tasmota-smartmeter/ve_utils.py
 
-4. Add a symlink to the file /data/rc.local:
+6. Add a symlink to the file /data/rc.local:
 
    `ln -s /data/dbus-tasmota-smartmeter/service /service/dbus-tasmota-smartmeter`
 
@@ -88,3 +93,5 @@ Many thanks for sharing the knowledge:
 
 * [venus.dbus-fronius-smartmeter](https://github.com/RalfZim/venus.dbus-fronius-smartmeter)
 * [multiplus-ii-ess-modene-messeinrichtung-statt-em24](https://community.victronenergy.com/articles/170837/multiplus-ii-ess-modene-messeinrichtung-statt-em24.html)
+* https://github.com/mr-manuel/venus-os_dbus-mqtt-grid/blob/master/dbus-mqtt-grid/install.sh
+* https://github.com/vikt0rm/dbus-shelly-1pm-pvinverter
