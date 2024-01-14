@@ -20,15 +20,37 @@ import logging
 import sys
 import os
 if sys.version_info.major == 2:
-    import gobject
+  import gobject
 else:
-    from gi.repository import GLib as gobject
-import time
+  from gi.repository import GLib as gobject
 import requests
+import configparser
 
-# Our own packages from Victron
+# Victron packages
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
 from vedbus import VeDbusService
+
+# Read config.ini
+try:
+  config_file = (os.path.dirname(os.path.realpath(__file__))) + "/config.ini"
+  if not os.path.exists(config_file):
+    print(
+      'ERROR: "' + config_file + '" file not found!\n' +
+      'Did you copied "config.sample.ini" to "config.ini"?')
+    sys.exit()
+
+  config = configparser.ConfigParser()
+  config.read(config_file)
+  if config["TASMOTA"]["host"] == "IP_ADDR_OR_FQDN" or config["TASMOTA"]["host"] == "":
+    print('ERROR: "config.ini" contains invalid default values like IP_ADDR_OR_FQDN. Adapt config.ini to your local configuration.')
+    sys.exit()
+
+except Exception:
+  exception_type, exception_object, exception_traceback = sys.exc_info()
+  file = exception_traceback.tb_frame.f_code.co_filename
+  line = exception_traceback.tb_lineno
+  print(f"Exception occurred: {repr(exception_object)} of type {exception_type} in {file} line #{line}")
+  sys.exit()
 
 
 class DbusEasymeterService:
@@ -37,7 +59,7 @@ class DbusEasymeterService:
     self._paths = paths
  
     logging.debug("%s /DeviceInstance = %d" % (servicename, deviceinstance))
- 
+
     # Create the management objects, as specified in the ccgx dbus-api document
     self._dbusservice.add_path('/Mgmt/ProcessName', __file__)
     self._dbusservice.add_path('/Mgmt/ProcessVersion', 'Unkown version, and running on Python ' + platform.python_version())
@@ -63,7 +85,6 @@ class DbusEasymeterService:
  
     # Add _update function 'timer'
     gobject.timeout_add(500, self._update) # Pause 500ms before the next request
-    
 
   def _update(self):   
     try:
@@ -123,11 +144,18 @@ class DbusEasymeterService:
     logging.debug("someone else updated %s to %s" % (path, value))
     return True # accept the change
 
+def getLogLevel():
+  if config["TASMOTA"]["logging"]:
+    level = logging.getLevelName(config["TASMOTA"]["logging"])
+  else:
+    level = logging.INFO
+
+  return level
 
 def main():
   logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                       datefmt='%Y-%m-%d %H:%M:%S',
-                      level=logging.INFO,
+                      level=getLogLevel(),
                       handlers=[
                         logging.FileHandler("%s/current.log" % (os.path.dirname(os.path.realpath(__file__)))),
                         logging.StreamHandler()
