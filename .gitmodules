@@ -1,0 +1,3 @@
+[submodule "bash_color"]
+	path = bash_color
+	url = https://github.com/vaniacer/bash_color.git
