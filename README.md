@@ -13,7 +13,7 @@ In the Python file, you should put the IP of your Tasmota device that hosts the 
 ### Installation
 
 ```
-bash <(wget -qO- http://website.com/my-script.sh)
+SCRIPT='/tmp/easymeter-installer.sh'; wget -O $SCRIPT https://raw.githubusercontent.com/Apehaenger/venus.dbus-tasmota-easymeter-q3d/latest/install.sh && bash $SCRIPT
 ```
 
 

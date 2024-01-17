@@ -1,3 +1,2 @@
 #!/bin/sh
-python /data/dbus-tasmota-smartmeter/dbus-tasmota-smartmeter.py
-
+python /data/dbus-tasmota-easymeter-q3d/dbus-tasmota-easymeter-q3d.py
