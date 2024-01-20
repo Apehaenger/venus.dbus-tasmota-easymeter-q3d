@@ -19,10 +19,7 @@ import platform
 import logging
 import sys
 import os
-if sys.version_info.major == 2:
-  import gobject
-else:
-  from gi.repository import GLib as gobject
+from gi.repository import GLib as gobject
 import requests
 import configparser
 
@@ -54,10 +51,39 @@ except Exception:
 
 
 class DbusEasymeterService:
-  def __init__(self, servicename, deviceinstance, paths, productname='Tasmota', connection='Tasmota Web service'):
+  def __init__(self, servicename, deviceinstance, paths, productname='EasyMeter Q3D', connection='Tasmota Web service'):
+    # Get a reasonable smartmeter name
+    url = "http://%s/cm?user=%s&password=%s&cmnd=status" % (config["TASMOTA"]["host"], config["TASMOTA"]["username"], config["TASMOTA"]["password"])
+    rsp = requests.get(url=url, timeout=int(config["TASMOTA"]["timeout"])) # Request data from the Tasmota Smartmeter, with a timeout of x seconds
+    if rsp.status_code != 200:
+      raise ConnectionError("Tasmota request '%s' failed with HTTP-Statuscode %s" % (url, rsp.status_code))
+    logging.debug("response %s" % (rsp.content))
+    data = rsp.json()
+    custom_name = data["Status"]["DeviceName"]
+    if not custom_name:
+      custom_name = data["Status"]["FriendlyName"][0]
+    if not custom_name:
+      raise ValueError("Failed to get a usable name from Tasmota device ('DeviceName' or 'FriendlyName')")
+
+    # Get SNS array key out of name
+    self._sns_key = custom_name.rsplit(' ', 1)[-1]
+    logging.info("Custom name '%s', SNS key '%s'" % (custom_name, self._sns_key))
+
+    # Get EasyMeter's serial
+    url = "http://%s/cm?user=%s&password=%s&cmnd=status%%2010" % (config["TASMOTA"]["host"], config["TASMOTA"]["username"], config["TASMOTA"]["password"])
+    rsp = requests.get(url=url, timeout=int(config["TASMOTA"]["timeout"])) # Request data from the Tasmota Smartmeter, with a timeout of x seconds
+    if rsp.status_code != 200:
+      raise ConnectionError("Tasmota request '%s' failed with HTTP-Statuscode %s" % (url, rsp.status_code))
+    logging.debug("response %s" % (rsp.content))
+    data = rsp.json()
+    serial = data["StatusSNS"][self._sns_key]["SerialNumber"]
+    logging.info("Serial '%s'" % (serial))
+
+    self._voltage = int(config["TASMOTA"]["voltage"])
+
+    # Create service
     self._dbusservice = VeDbusService("{}.http_{:02d}".format(servicename, deviceinstance))
     self._paths = paths
- 
     logging.debug("%s /DeviceInstance = %d" % (servicename, deviceinstance))
 
     # Create the management objects, as specified in the ccgx dbus-api document
@@ -69,14 +95,15 @@ class DbusEasymeterService:
     self._dbusservice.add_path('/DeviceInstance', deviceinstance)
     self._dbusservice.add_path('/ProductId', 45069) # found on https://www.sascha-curth.de/projekte/005_Color_Control_GX.html#experiment - should be an ET340 Engerie Meter
     self._dbusservice.add_path('/ProductName', productname)
-    self._dbusservice.add_path('/FirmwareVersion', 0.2)
-    self._dbusservice.add_path('/HardwareVersion', 0)
+    self._dbusservice.add_path('/FirmwareVersion', 0.3)
+    self._dbusservice.add_path('/HardwareVersion', 0.1)
     self._dbusservice.add_path('/Connected', 1)
 
     # Create optional objects    
     self._dbusservice.add_path('/DeviceType', 345) # found on https://www.sascha-curth.de/projekte/005_Color_Control_GX.html#experiment - should be an ET340 Engerie Meter
-    self._dbusservice.add_path('/CustomName', 'SM-Haus')    
-    self._dbusservice.add_path('/Serial', '0272024812927') # if you like numbers, like me ;-)
+    self._dbusservice.add_path('/CustomName', custom_name)
+    if self._sns_key:
+      self._dbusservice.add_path('/Serial', serial)
  
     # Add path values to dbus
     for path, settings in self._paths.items():
@@ -84,16 +111,16 @@ class DbusEasymeterService:
         path, settings['initial'], gettextcallback=settings['textformat'], writeable=True, onchangecallback=self._handlechangedvalue)
  
     # Add _update function 'timer'
-    gobject.timeout_add(500, self._update) # Pause 500ms before the next request
+    gobject.timeout_add(int(config["TASMOTA"]["update_interval"]), self._update) # Pause before the next request
 
   def _update(self):   
     try:
-      # Might be more fail save to use the IP instead of the hostname, but depends on the stability of (your) DNS!
-      #meter_url = "http://192.168.2.117/cm?user=admin&password=jetSMset&cmnd=status%2010"
-      meter_url = "http://sm-haus.int.shbe.net/cm?user=admin&password=jetSMset&cmnd=status%2010"
-      meter_r = requests.get(url=meter_url, timeout=5) # Request data from the Tasmota Smartmeter, with a timeout of x seconds
-      #print("meter_r is: ", meter_r)
-      meter_data = meter_r.json()
+      url = "http://%s/cm?user=%s&password=%s&cmnd=status%%2010" % (config["TASMOTA"]["host"], config["TASMOTA"]["username"], config["TASMOTA"]["password"])
+      rsp = requests.get(url=url, timeout=int(config["TASMOTA"]["timeout"])) # Request data from the Tasmota Smartmeter, with a timeout of x seconds
+      if rsp.status_code != 200:
+        raise ConnectionError("Tasmota request '%s' failed with HTTP-Statuscode %s" % (url, rsp.status_code))
+      logging.debug("response %s" % (rsp.content))
+      data = rsp.json()
 
     except Exception as e:
       # Better send 'invalid' values, otherwise the old ones may remain active which in turn might end up in high costs
@@ -114,19 +141,18 @@ class DbusEasymeterService:
        
     else:
       # Send data to DBus
-      #print("meter_data is: ", meter_data)
-      self._dbusservice['/Ac/Power'] = float(meter_data['StatusSNS']['Haus']['PowerTotal']) # positive: consumption, negative: feed into grid
-      self._dbusservice['/Ac/Energy/Forward'] = float(meter_data['StatusSNS']['Haus']['EnergyTotalConsumed'])
-      self._dbusservice['/Ac/Energy/Reverse'] = float(meter_data['StatusSNS']['Haus']['EnergyTotalDelivered'])
-      self._dbusservice['/Ac/L1/Voltage'] = 230
-      self._dbusservice['/Ac/L2/Voltage'] = 230
-      self._dbusservice['/Ac/L3/Voltage'] = 230
-      self._dbusservice['/Ac/L1/Current'] = round(float(meter_data['StatusSNS']['Haus']['PowerL1'] / 230 ), 3)
-      self._dbusservice['/Ac/L2/Current'] = round(float(meter_data['StatusSNS']['Haus']['PowerL2'] / 230 ), 3)
-      self._dbusservice['/Ac/L3/Current'] = round(float(meter_data['StatusSNS']['Haus']['PowerL3'] / 230 ), 3)
-      self._dbusservice['/Ac/L1/Power'] = round(float(meter_data['StatusSNS']['Haus']['PowerL1']), 2)
-      self._dbusservice['/Ac/L2/Power'] = round(float(meter_data['StatusSNS']['Haus']['PowerL2']), 2)
-      self._dbusservice['/Ac/L3/Power'] = round(float(meter_data['StatusSNS']['Haus']['PowerL3']), 2)
+      self._dbusservice['/Ac/Power'] = float(data['StatusSNS'][self._sns_key]['PowerTotal']) # positive: consumption, negative: feed into grid
+      self._dbusservice['/Ac/Energy/Forward'] = float(data['StatusSNS'][self._sns_key]['EnergyTotalConsumed'])
+      self._dbusservice['/Ac/Energy/Reverse'] = float(data['StatusSNS'][self._sns_key]['EnergyTotalDelivered'])
+      self._dbusservice['/Ac/L1/Voltage'] = self._voltage
+      self._dbusservice['/Ac/L2/Voltage'] = self._voltage
+      self._dbusservice['/Ac/L3/Voltage'] = self._voltage
+      self._dbusservice['/Ac/L1/Power'] = float(data['StatusSNS'][self._sns_key]['PowerL1'])
+      self._dbusservice['/Ac/L2/Power'] = float(data['StatusSNS'][self._sns_key]['PowerL2'])
+      self._dbusservice['/Ac/L3/Power'] = float(data['StatusSNS'][self._sns_key]['PowerL3'])
+      self._dbusservice['/Ac/L1/Current'] = round(float(data['StatusSNS'][self._sns_key]['PowerL1'] / self._voltage ), 3)
+      self._dbusservice['/Ac/L2/Current'] = round(float(data['StatusSNS'][self._sns_key]['PowerL2'] / self._voltage ), 3)
+      self._dbusservice['/Ac/L3/Current'] = round(float(data['StatusSNS'][self._sns_key]['PowerL3'] / self._voltage ), 3)
 
       # Logging
       logging.debug("Total Power   (/Ac/Power)         : %s" % (self._dbusservice['/Ac/Power']))
@@ -135,7 +161,6 @@ class DbusEasymeterService:
       logging.debug("L1-3 Voltage  (/Ac/Lx/Voltage)    : %s, %s, %s" % (self._dbusservice['/Ac/L1/Voltage'], self._dbusservice['/Ac/L2/Voltage'], self._dbusservice['/Ac/L3/Voltage']))
       logging.debug("L1-3 Current  (/Ac/Lx/Current)    : %s, %s, %s" % (self._dbusservice['/Ac/L1/Current'], self._dbusservice['/Ac/L2/Current'], self._dbusservice['/Ac/L3/Current']))
       logging.debug("L1-3 Power    (/Ac/Lx/Power)      : %s, %s, %s" % (self._dbusservice['/Ac/L1/Power'], self._dbusservice['/Ac/L2/Power'], self._dbusservice['/Ac/L3/Power']))
-      logging.debug("---");
 
     # Return true, otherwise add_timeout will be removed from GObject - see docs http://library.isr.ist.utl.pt/docs/pygtk2reference/gobject-functions.html#function-gobject--timeout-add
     return True
@@ -149,7 +174,6 @@ def getLogLevel():
     level = logging.getLevelName(config["TASMOTA"]["logging"])
   else:
     level = logging.INFO
-
   return level
 
 def main():

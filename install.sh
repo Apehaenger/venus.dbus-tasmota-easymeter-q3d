@@ -109,7 +109,7 @@ EOF
     fi
     echo "ok"
     
-    echo -n "8. Set script permissions, link ... and activate it (boot save)..."
+    echo -n "8. Set script permissions, link ... and activate it (boot & update save)..."
     chmod 744 $SERVICE_DIR/$SERVICE_NAME.py
     chmod 744 $SERVICE_DIR/install.sh
     chmod 744 $SERVICE_DIR/kill_me.sh
