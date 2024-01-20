@@ -3,32 +3,45 @@ set -o errexit   # abort on nonzero exitstatus
 set -o nounset   # abort on unbound variable
 set -o pipefail  # don't hide errors within pipes
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SERVICE_NAME=$(basename $SCRIPT_DIR)
+
+echo -e "\nSCRIPT_DIR '$SCRIPT_DIR', SERVICE_NAME '$SERVICE_NAME'\n"
+read
+
 readonly REPO="https://github.com/Apehaenger/venus.dbus-tasmota-easymeter-q3d.git"
-DATA_DIR="/data"
-SERVICE_NAME="dbus-tasmota-easymeter-q3d"
-SERVICE_DIR="$DATA_DIR/$SERVICE_NAME"
+readonly DATA_DIR="/data"
+readonly SERVICE_NAME="dbus-tasmota-easymeter-q3d"
+readonly SERVICE_DIR="$DATA_DIR/$SERVICE_NAME"
+
+echo -e "\nSCRIPT_DIR '$SCRIPT_DIR', SERVICE_NAME '$SERVICE_NAME'\n"
+read
 
 THOST=""
 TUSER="admin"
 TPASS=""
-#TDEVNAME=""
-#TDEVSN=""
 
 main() {
+    # If config.ini already exists, questionaire install already done
+    if [[ -f $SCRIPT_DIR/config.ini ]]; then
+        activate
+        exit 0
+    fi
+
     # Greeting and major information
 cat << EOF
 This script will install '$SERVICE_NAME' service for VenusOS.
 At any place you may press 'Ctrl-c' to abort the installation process!
 
 In detail, this script does the following:
-1. Check if this service got already cloned. If so, installation will abort with a message
+1. Check if this service already got cloned. If so, installation will abort with a message
 2. Check if $DATA_DIR partition exists and has enough space. If not, installation will abort with a message
 3. Check if git command exists. If not, it tries to install it via systems 'opkg' package manager
 4. Clone $REPO to $SERVICE_DIR
-5. Ask for some mandatory Tasmota device infos
-6. Tries to connect to Tasmota device (and gather some basic infos)
+5. Ask for some mandatory Tasmota device infos (hostname, username, password)
+6. Tries to connect to Tasmota device. If fail, rewind to step 5.
 7. Save previously asked values to config.ini
-8. Set script permissions, link service script and activate it (boot and update save)
+8. Set script permissions, link service script and activate it
 
 EOF
     
@@ -86,7 +99,7 @@ EOF
     }
     echo "ok"
     
-    ##### Tasmota detection #####
+    ##### Tasmota settings #####
     cp $SERVICE_DIR/config.sample.ini $SERVICE_DIR/config.ini
     
     ask=1
@@ -110,18 +123,21 @@ EOF
     echo "ok"
     
     echo -n "8. Set script permissions, link ... and activate it (boot & update save)..."
+    activate
+}
+
+activate () {
     chmod 744 $SERVICE_DIR/$SERVICE_NAME.py
     chmod 744 $SERVICE_DIR/install.sh
-    chmod 744 $SERVICE_DIR/kill_me.sh
-    #chmod 744 $SERVICE_DIR/restart.sh
-    #chmod 744 $SERVICE_DIR/uninstall.sh
-    #chmod 744 $SERVICE_DIR/test.sh
+    chmod 744 $SERVICE_DIR/uninstall.sh
+    chmod 744 $SERVICE_DIR/restart.sh
+    chmod 744 $SERVICE_DIR/update.sh
     chmod 755 $SERVICE_DIR/service/run
     
     # Create sym-link to run script in deamon
     ln -s $SERVICE_DIR/service /service/$SERVICE_NAME
     
-    # Add install-script to rc.local to be save also after firmware update
+    # Add service to rc.local to be save also after firmware update
     filename=/data/rc.local
     if [ ! -f $filename ]
     then
@@ -136,7 +152,6 @@ EOF
     echo "ok"
 }
 
-
 get_device_infos () {
     echo "6. Get device info from $THOST..."
     tmpfile=$(mktemp)
@@ -145,37 +160,6 @@ get_device_infos () {
         echo "ERROR: wget failed gathering tasmota infos. Check previous lines about what was wrong and try again."
         return
     }
-    
-    # Get optional JSON data
-    #echo "tmpfile: $tmpfile"
-    #cat $tmpfile
-    #echo -e "\nTest:"
-    
-    #tmpfile2=$(mktemp)
-    # Get Status->DeviceName
-    #python -c "import json,sys;f=open('$tmpfile');obj=json.load(f);print(obj['Status']['DeviceName']);" > $tmpfile2 || {
-    #    echo "WARN: Failed parsing 'DeviceName' from Tasmotas JSON response. Ignore because it's unimportant."
-    #    ask=0
-    #    return
-    #}
-    #TDEVNAME=$(cat $tmpfile2)
-    
-    # Fallback to FriendlyName
-    #if [[ -z "$TDEVNAME" ]]; then
-    # Get Status->FriendlyName->0
-    #    python -c "import json,sys;f=open('$tmpfile');obj=json.load(f);print(obj['Status']['FriendlyName'][0]);" > $tmpfile2 || {
-    #        echo "WARN: Failed parsing 'FriendlyName' from Tasmotas JSON response. Ignore because it's unimportant."
-    #        ask=0
-    #        return
-    #    }
-    #    TDEVNAME=$(cat $tmpfile2)
-    #fi
-    
-    #readonly snsname=$(echo "$TDEVNAME" | tr ' ' '\n' | tail -n 1)
-    
-    
-    #echo -e "\nDeviceName='$TDEVNAME', SNS-Name='$snsname'"
-    
     ask=0
 }
 
