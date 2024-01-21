@@ -13,57 +13,15 @@ In the Python file, you should put the IP of your Tasmota device that hosts the 
 ### Installation
 
 ```
+SCRIPT='/tmp/easymeter-installer.sh'; wget -O $SCRIPT https://raw.githubusercontent.com/Apehaenger/venus.dbus-tasmota-easymeter-q3d/develop/install.sh && bash $SCRIPT
 SCRIPT='/tmp/easymeter-installer.sh'; wget -O $SCRIPT https://raw.githubusercontent.com/Apehaenger/venus.dbus-tasmota-easymeter-q3d/latest/install.sh && bash $SCRIPT
 ```
 
-
-1. SSH into your Venus device and check (i.e. via `df -h`) that you have some kbyte left on your '/data' partition.<br>
-If not, try `/opt/victronenergy/swupdate-scripts/resize2fs.sh` and check again.
-
-2. If you don't have 'git' already installed, do:
-   ```
-   opkg update
-   opkg install git
-   ```
-
-3. Install:
-   ```
-   cd /data
-   git clone https://github.com/Apehaenger/venus.dbus-tasmota-easymeter-q3d.git
-   cp venus.dbus-tasmota-easymeter-q3d/config.sample.ini venus.dbus-tasmota-easymeter-q3d/config.ini
-   ```
-
-4. Configure by `nano /data/venus.dbus-tasmota-easymeter-q3d/config.ini` and change (at least) 'host' and 'password' to yours.
-
-5. First functionality test via `/data/venus.dbus-tasmota-easymeter-q3d/test`.<br>
-   This will stop a probably already running 'venus.dbus-tasmota-easymeter' service and should show you some output.<br>
-   Stop via 'Ctrl-c', change config if something is wrong, or go-on if the values have been reasonable.
-
-6. Set permissions for files:
-
-   `chmod 755 /data/dbus-tasmota-smartmeter/service/run`
-
-   `chmod 744 /data/dbus-tasmota-smartmeter/kill_me.sh`
-
-7.  Get two files from the [velib_python](https://github.com/victronenergy/velib_python) and install them on your venus:
-
-   - /data/dbus-tasmota-smartmeter/vedbus.py
-   - /data/dbus-tasmota-smartmeter/ve_utils.py
-
-8.  Add a symlink to the file /data/rc.local:
-
-   `ln -s /data/dbus-tasmota-smartmeter/service /service/dbus-tasmota-smartmeter`
-
-   Or if that file does not exist yet, store the file rc.local from this service on your Raspberry Pi as /data/rc.local .
-   You can then create the symlink by just running rc.local:
-  
-   `rc.local`
-
-   The daemon-tools should automatically start this service within seconds.
-
 ### Update
 
-   TODO
+```
+/data/dbus-tasmota-easymeter-q3d/update.sh
+```
 
 ### Debugging
 

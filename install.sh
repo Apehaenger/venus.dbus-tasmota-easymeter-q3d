@@ -3,19 +3,10 @@ set -o errexit   # abort on nonzero exitstatus
 set -o nounset   # abort on unbound variable
 set -o pipefail  # don't hide errors within pipes
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-SERVICE_NAME=$(basename $SCRIPT_DIR)
-
-echo -e "\nSCRIPT_DIR '$SCRIPT_DIR', SERVICE_NAME '$SERVICE_NAME'\n"
-read
-
 readonly REPO="https://github.com/Apehaenger/venus.dbus-tasmota-easymeter-q3d.git"
 readonly DATA_DIR="/data"
 readonly SERVICE_NAME="dbus-tasmota-easymeter-q3d"
 readonly SERVICE_DIR="$DATA_DIR/$SERVICE_NAME"
-
-echo -e "\nSCRIPT_DIR '$SCRIPT_DIR', SERVICE_NAME '$SERVICE_NAME'\n"
-read
 
 THOST=""
 TUSER="admin"
@@ -23,7 +14,7 @@ TPASS=""
 
 main() {
     # If config.ini already exists, questionaire install already done
-    if [[ -f $SCRIPT_DIR/config.ini ]]; then
+    if [[ -f $SERVICE_DIR/config.ini ]]; then
         activate
         exit 0
     fi
@@ -33,7 +24,7 @@ cat << EOF
 This script will install '$SERVICE_NAME' service for VenusOS.
 At any place you may press 'Ctrl-c' to abort the installation process!
 
-In detail, this script does the following:
+In detail, this script will do the following:
 1. Check if this service already got cloned. If so, installation will abort with a message
 2. Check if $DATA_DIR partition exists and has enough space. If not, installation will abort with a message
 3. Check if git command exists. If not, it tries to install it via systems 'opkg' package manager
@@ -124,6 +115,9 @@ EOF
     
     echo -n "8. Set script permissions, link ... and activate it (boot & update save)..."
     activate
+    echo "ok"
+
+    echo -e "\nAll done.\nCheck your Venus device, it should list now the new smartmeter in its main screen."
 }
 
 activate () {
