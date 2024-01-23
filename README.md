@@ -22,11 +22,6 @@ The received data will be published, as com.victronenergy.grid service. This mak
      <img src="assets/RemoteConsole-Device.jpg" width="49%"/>
 </p>
 
-## Configuration
-
-The generic configuration is done by a questionnaire of the install script,
-but if you like to change something afterwards, modify `nano /data/dbus-tasmota-easymeter-q3d/config.ini` and restart the service via `/data/dbus-tasmota-easymeter-q3d/restart.sh`
-
 ## Installation
 
 SSH into your Venus device and install this service via:
@@ -34,6 +29,11 @@ SSH into your Venus device and install this service via:
 SCRIPT='/tmp/easymeter-installer.sh'; wget -O $SCRIPT https://raw.githubusercontent.com/Apehaenger/venus.dbus-tasmota-easymeter-q3d/latest/install.sh && bash $SCRIPT
 ```
 Once finished the installation, you should see your EasyMeter in your VenusOS device remote console.
+
+## Configuration
+
+The generic configuration is done by a questionnaire of the install script,
+but if you like to change something afterwards, modify `nano /data/dbus-tasmota-easymeter-q3d/config.ini` and restart the service via `/data/dbus-tasmota-easymeter-q3d/restart.sh`
 
 ## Update
 
@@ -80,6 +80,7 @@ The 'supervisor' daemon will restart the script within a second.
 - [x] Improve text/number formatting 
 - [x] Config instead of static source code changes
 - [x] More comfortable installer
+- [ ] Add mains voltage to questionnaire
 
 ## Thank you
 
