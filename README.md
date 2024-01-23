@@ -12,26 +12,15 @@ This Python script is adapted to interpret the values of an EasyMeter Q3Dxxxxx d
 
 The received data will be published, as com.victronenergy.grid service. This makes the VenusOS work as if you had a physical Victron Grid Meter installed:
 
-<div style="display:flex">
-     <div style="flex:1;padding-right:10px;">
-          <img src="assets/RemoteConsole-Overview.jpg" width="100%"/>
-     </div>
-     <div style="flex:1;padding-left:10px;">
-          <img src="assets/RemoteConsole-Page1.jpg" width="100%"/>
-     </div>
-</div>
+<p>
+     <img src="assets/RemoteConsole-Overview.jpg" width="49%"/>
+     <img src="assets/RemoteConsole-Page1.jpg" width="49%"/>
+</p>
 
-<div style="display:flex">
-     <div style="flex:1;padding-right:10px;">
-          <img src="assets/RemoteConsole-Detail.jpg" width="100%"/>
-     </div>
-     <div style="flex:1;padding-left:10px;">
-          <img src="assets/RemoteConsole-Device.jpg" width="100%"/>
-     </div>
-</div>
-
-
-
+<p>
+     <img src="assets/RemoteConsole-Detail.jpg" width="49%"/>
+     <img src="assets/RemoteConsole-Device.jpg" width="49%"/>
+</p>
 
 ## Configuration
 
@@ -72,7 +61,7 @@ Start processing in foreground:
 
 `python /data/dbus-tasmota-easymeter-q3d/dbus-tasmota-easymeter-q3d.py`
 
-Once done with debugging, don't forget to switch logging back to 'INFO', otherwise you risk a large logfile `/data/dbus-tasmota-easymeter-q3d/current.log` and activate background processing again via:
+Once done with debugging, don't forget to switch logging back to 'INFO' (otherwise you risk a large logfile) and activate background processing again via:
 
 `/data/dbus-tasmota-easymeter-q3d/install.sh`
 
